@@ -1,0 +1,49 @@
+# --- System / OS ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Python & Environments ---
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.python-version
+
+# --- uv (Package Manager) ---
+# We keep pyproject.toml and uv.lock, but ignore the tool's internal cache
+.uv/
+
+# --- Google Cloud & Security ---
+# Critical: Never commit service account keys or ADC JSONs
+*.json
+!pyproject.toml   # Exception: we need this JSON-like file
+!uv.lock          # Exception: we need the lockfile
+
+# Specific credential patterns
+credentials/
+secrets/
+*-key.json
+service-account.json
+.gcp/
+
+# --- Data & Logs ---
+# Don't commit raw F1 data or logs to GitHub
+data/
+raw_telemetry/
+*.csv
+*.jsonl
+*.log
+logs/
+
+# --- dbt (Phase 3) ---
+target/
+dbt_packages/
+logs/
+
+# --- Airflow (Phase 2) ---
+standalone_admin_password.txt
+airflow.db
+airflow.cfg
