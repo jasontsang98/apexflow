@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: apexflow_bronze
+    schema: apexflow_bronze
+    tables:
+      - name: telemetry_raw
+      - name: laps_raw
+      - name: weather_raw
+      - name: stints_raw
+      - name: pits_raw
+      - name: race_control_raw
+      - name: location_raw
