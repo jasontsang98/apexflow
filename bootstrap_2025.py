@@ -51,7 +51,7 @@ def run_bootstrap():
     upload_to_gcs(bucket_name, f"bronze/telemetry/session_key={session_id}/weather.json", validated_weather)
     logger.info(f"✅ Landed {len(validated_weather)} weather records.")
     
-    race_control = client.get_race_controol(session_id)
+    race_control = client.get_race_control(session_id)
     validated_race_control = [RaceControlData(**rc).model_dump(mode='json') for rc in race_control]
     upload_to_gcs(bucket_name, f"bronze/telemetry/session_key={session_id}/race_control.json", validated_race_control)
     logger.info(f"✅ Landed {len(validated_race_control)} race control records.")
