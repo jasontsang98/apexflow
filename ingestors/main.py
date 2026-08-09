@@ -1,121 +1,157 @@
 import json
+import os
+
 from google.cloud import storage
-from .utils import get_logger
+
 from .api_client import OpenF1Client
 from .schemas import (
-    TelemetryData, 
-    DriverData, 
-    LapData, 
-    StintData, 
+    DriverData,
+    LapData,
+    LocationData,
     PitData,
-    LocationData
+    StintData,
+    TelemetryData,
 )
+from .utils import get_logger
 
 logger = get_logger("Main-Ingestor")
 
-def upload_to_gcs(bucket_name: str, destination_blob_name: str, data: list):
-    """Uploads data to GCS using Application Default Credentials (ADC)."""
-    try:
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(bucket_name)
-        blob = bucket.blob(destination_blob_name)
-        
-        jsonl_lines = []
-        for record in data:
-            if hasattr(record, 'model_dump_json'):
-                # Pydantic v2 path: uses your validators + strips extra nulls
-                jsonl_lines.append(record.model_dump_json(exclude_none=True))
-            else:
-                # Fallback for standard dicts
-                jsonl_lines.append(json.dumps(record, default=str))
-        
-        blob.upload_from_string(
-            data="\n".join(jsonl_lines),
-            content_type='application/x-ndjson'
-        )
-        logger.info(f"🚀 Uploaded: gs://{bucket_name}/{destination_blob_name}")
-    except Exception as e:
-        logger.error(f"❌ GCS Upload Failed: {e}")
+
+def upload_to_gcs(bucket_name: str, destination_blob_name: str, data: list) -> str:
+    """Upload records as NDJSON and return the resulting GCS URI.
+
+    Exceptions deliberately propagate so callers and orchestrators cannot report
+    a successful ingestion after a failed write.
+    """
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+
+    jsonl_lines = []
+    for record in data:
+        if hasattr(record, "model_dump_json"):
+            jsonl_lines.append(record.model_dump_json(exclude_none=True))
+        else:
+            jsonl_lines.append(json.dumps(record, default=str))
+
+    blob.upload_from_string(
+        data="\n".join(jsonl_lines),
+        content_type="application/x-ndjson",
+    )
+    uri = f"gs://{bucket_name}/{destination_blob_name}"
+    logger.info("Uploaded: %s", uri)
+    return uri
+
+
+def _ingest_driver_data(
+    fetch,
+    schema,
+    filename: str,
+    bucket_name: str,
+    session_key: int,
+    driver_number: int,
+) -> bool:
+    raw_data = fetch(session_key, driver_number)
+    if not raw_data:
+        return False
+
+    validated_data = [schema(**record) for record in raw_data]
+    path = (
+        f"bronze/telemetry/session_key={session_key}/"
+        f"driver_number={driver_number}/{filename}"
+    )
+    upload_to_gcs(bucket_name, path, validated_data)
+    return True
+
 
 def ingest_driver_telemetry(client, bucket_name, session_key, driver_number):
-    """Specific task for high-frequency car sensor data."""
-    raw_data = client.get_car_data(session_key, driver_number)
-    if raw_data:
-        # Validate sample
-        validated_data = [TelemetryData(**d) for d in raw_data]
-        path = f"bronze/telemetry/session_key={session_key}/driver_number={driver_number}/car_data.json"
-        upload_to_gcs(bucket_name, path, validated_data)
-        return True
-    return False
+    return _ingest_driver_data(
+        client.get_car_data,
+        TelemetryData,
+        "car_data.json",
+        bucket_name,
+        session_key,
+        driver_number,
+    )
+
 
 def ingest_driver_laps(client, bucket_name, session_key, driver_number):
-    """Specific task for lap timing metadata."""
-    raw_data = client.get_car_laps(session_key, driver_number)
-    if raw_data:
-        # Validate sample
-        validated_data = [LapData(**d) for d in raw_data]
-        path = f"bronze/telemetry/session_key={session_key}/driver_number={driver_number}/laps.json"
-        upload_to_gcs(bucket_name, path, validated_data)
-        return True
-    return False
+    return _ingest_driver_data(
+        client.get_car_laps,
+        LapData,
+        "laps.json",
+        bucket_name,
+        session_key,
+        driver_number,
+    )
+
 
 def ingest_driver_stints(client, bucket_name, session_key, driver_number):
-    """Specific task for stints metadata."""
-    raw_data = client.get_stints(session_key, driver_number)
-    if raw_data:
-        # Validate sample
-        validated_data = [StintData(**d) for d in raw_data]
-        path = f"bronze/telemetry/session_key={session_key}/driver_number={driver_number}/stints.json"
-        upload_to_gcs(bucket_name, path, validated_data)
-        return True
-    return False
+    return _ingest_driver_data(
+        client.get_stints,
+        StintData,
+        "stints.json",
+        bucket_name,
+        session_key,
+        driver_number,
+    )
+
 
 def ingest_driver_pit_stops(client, bucket_name, session_key, driver_number):
-    """Specific task for pit stop metadata."""
-    raw_data = client.get_pit_stops(session_key, driver_number)
-    if raw_data:
-        # Validate sample
-        validated_data = [PitData(**d) for d in raw_data]
-        path = f"bronze/telemetry/session_key={session_key}/driver_number={driver_number}/pits.json"
-        upload_to_gcs(bucket_name, path, validated_data)
-        return True
-    return False
+    return _ingest_driver_data(
+        client.get_pit_stops,
+        PitData,
+        "pits.json",
+        bucket_name,
+        session_key,
+        driver_number,
+    )
+
 
 def ingest_driver_locations(client, bucket_name, session_key, driver_number):
-    """Specific task for high-frequency location data."""
-    raw_data = client.get_locations(session_key, driver_number)
-    if raw_data:
-        # Validate sample
-        validated_data = [LocationData(**d) for d in raw_data]
-        path = f"bronze/telemetry/session_key={session_key}/driver_number={driver_number}/locations.json"
-        upload_to_gcs(bucket_name, path, validated_data)
-        return True
-    return False
+    return _ingest_driver_data(
+        client.get_locations,
+        LocationData,
+        "locations.json",
+        bucket_name,
+        session_key,
+        driver_number,
+    )
+
 
 def run_ingestion():
-    client = OpenF1Client(sustained_delay=0.35)
-    bucket_name = "apexflow-raw-data"
-    session_id = 9693 # Australian GP 2025
-    
-    logger.info(f"🏁 Starting Full Grid Ingestion for Session {session_id}")
+    request_delay = float(os.getenv("OPENF1_REQUEST_DELAY", "2.1"))
+    request_timeout = float(os.getenv("OPENF1_REQUEST_TIMEOUT", "30"))
+    max_retries = int(os.getenv("OPENF1_MAX_RETRIES", "3"))
+    bucket_name = os.getenv("APEXFLOW_BUCKET", "apexflow-raw-data")
+    session_id = int(os.getenv("APEXFLOW_SESSION_KEY", "9693"))
 
-    # 1. Identify the grid
+    client = OpenF1Client(
+        sustained_delay=request_delay,
+        timeout=request_timeout,
+        max_retries=max_retries,
+    )
+    logger.info("Starting full-grid ingestion for session %d", session_id)
+
     raw_drivers = client.get_drivers(session_id)
-    drivers = [DriverData(**d) for d in raw_drivers]
+    drivers = [DriverData(**record) for record in raw_drivers]
+    if not drivers:
+        raise RuntimeError(f"No drivers returned for session {session_id}")
 
-    # 2. Combined Driver Loop
+    tasks = (
+        ingest_driver_telemetry,
+        ingest_driver_laps,
+        ingest_driver_stints,
+        ingest_driver_pit_stops,
+        ingest_driver_locations,
+    )
     for driver in drivers:
-        d_num = driver.driver_number
-        logger.info(f"👤 Processing Driver {d_num} ({driver.name_acronym})")
-        
-        # We run both tasks for the driver in sequence
-        ingest_driver_telemetry(client, bucket_name, session_id, d_num)
-        ingest_driver_laps(client, bucket_name, session_id, d_num)
-        ingest_driver_stints(client, bucket_name, session_id, d_num)
-        ingest_driver_pit_stops(client, bucket_name, session_id, d_num)
-        ingest_driver_locations(client, bucket_name, session_id, d_num)
+        logger.info("Processing driver %d (%s)", driver.driver_number, driver.name_acronym)
+        for task in tasks:
+            task(client, bucket_name, session_id, driver.driver_number)
 
-    logger.info("🏆 Full grid ingestion (Telemetry + Laps + Locations) complete!")
+    logger.info("Full-grid ingestion complete")
+
 
 if __name__ == "__main__":
     run_ingestion()
