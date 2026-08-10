@@ -1,0 +1,146 @@
+version: 2
+
+models:
+  - name: stg_drivers
+    description: Driver and team metadata at session grain.
+    columns:
+      - name: driver_session_id
+        data_tests: [not_null, unique]
+      - name: session_key
+        data_tests: [not_null]
+      - name: driver_number
+        data_tests: [not_null]
+      - name: full_name
+        data_tests: [not_null]
+      - name: team_colour_hex
+        data_tests: [not_null]
+
+  - name: stg_sessions
+    description: OpenF1 session metadata normalized for analytics.
+    columns:
+      - name: session_key
+        data_tests: [not_null, unique]
+      - name: meeting_key
+        data_tests: [not_null]
+      - name: session_start
+        data_tests: [not_null]
+
+  - name: stg_meetings
+    description: Race meeting and circuit metadata.
+    columns:
+      - name: meeting_key
+        data_tests: [not_null, unique]
+      - name: meeting_name
+        data_tests: [not_null]
+      - name: circuit_short_name
+        data_tests: [not_null]
+
+  - name: dim_sessions
+    description: Sessions that have analytics-ready lap data, enriched with meeting and circuit metadata.
+    columns:
+      - name: session_key
+        data_tests: [not_null, unique]
+      - name: meeting_key
+        data_tests: [not_null]
+      - name: meeting_name
+        data_tests: [not_null]
+      - name: circuit_short_name
+        data_tests: [not_null]
+
+  - name: dim_drivers
+    description: Drivers that have analytics-ready lap data, retaining session-specific team identity.
+    columns:
+      - name: driver_session_id
+        data_tests: [not_null, unique]
+      - name: session_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_sessions')
+                field: session_key
+      - name: driver_number
+        data_tests: [not_null]
+      - name: full_name
+        data_tests: [not_null]
+      - name: team_colour_hex
+        data_tests: [not_null]
+
+  - name: fct_lap_leaderboard
+    description: One telemetry aggregate per driver lap, ranked within its session.
+    columns:
+      - name: session_key
+        data_tests: [not_null]
+      - name: driver_number
+        data_tests: [not_null]
+      - name: lap_number
+        data_tests: [not_null]
+      - name: lap_duration
+        data_tests: [not_null]
+      - name: is_pit_out_lap
+        data_tests: [not_null]
+
+  - name: fct_dashboard_laps
+    description: Dashboard-facing lap fact with driver, team, circuit, strategy, and performance context.
+    columns:
+      - name: lap_id
+        data_tests: [not_null, unique]
+      - name: driver_session_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_drivers')
+                field: driver_session_id
+      - name: session_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_sessions')
+                field: session_key
+      - name: lap_duration
+        data_tests: [not_null]
+      - name: tire_compound
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['SOFT', 'MEDIUM', 'HARD', 'INTERMEDIATE', 'WET']
+      - name: team_colour_hex
+        data_tests: [not_null]
+
+  - name: fct_tire_degradation
+    description: Clean racing laps grouped into inferred tire stints with degradation metrics.
+    columns:
+      - name: degradation_id
+        data_tests: [not_null, unique]
+      - name: lap_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_dashboard_laps')
+                field: lap_id
+      - name: strategy_stint_number
+        data_tests: [not_null]
+      - name: lap_in_stint
+        data_tests: [not_null]
+      - name: tire_age_at_lap_end
+        data_tests: [not_null]
+      - name: lap_duration
+        data_tests: [not_null]
+
+  - name: fct_corner_performance
+    description: One deterministic lap-level V-min telemetry point per driver lap.
+    columns:
+      - name: session_key
+        data_tests: [not_null]
+      - name: driver_number
+        data_tests: [not_null]
+      - name: lap_number
+        data_tests: [not_null]
+      - name: lap_v_min
+        data_tests: [not_null]
+      - name: v_min_timestamp
+        data_tests: [not_null]

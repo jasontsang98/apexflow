@@ -11,3 +11,6 @@ sources:
       - name: pits_raw
       - name: race_control_raw
       - name: location_raw
+      - name: driver_raw
+      - name: sessions_metadata
+      - name: meetings_metadata
