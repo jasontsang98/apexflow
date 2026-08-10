@@ -134,6 +134,18 @@ class DriverIngestionTests(unittest.TestCase):
         self.assertEqual(lap.segments_sector_1, [1.0, 2.0])
         self.assertEqual(lap.segments_sector_2, [])
 
+    def test_lap_schema_allows_missing_start_timestamp(self):
+        lap = LapData(
+            session_key=10033,
+            meeting_key=1276,
+            driver_number=1,
+            lap_number=1,
+            date_start=None,
+            is_pit_out_lap=False,
+        )
+
+        self.assertIsNone(lap.date_start)
+
     @patch("ingestors.main.upload_to_gcs")
     def test_session_results_are_validated_and_uploaded(self, upload):
         client = Mock()
@@ -161,6 +173,27 @@ class DriverIngestionTests(unittest.TestCase):
         ))
         self.assertIsInstance(args[2][0], SessionResultData)
 
+    @patch("ingestors.main.upload_to_gcs")
+    def test_dns_session_result_allows_null_lap_count(self, upload):
+        client = Mock()
+        client.get_session_results.return_value = [{
+            "session_key": 9693,
+            "meeting_key": 1254,
+            "driver_number": 6,
+            "position": None,
+            "number_of_laps": None,
+            "points": 0.0,
+            "duration": None,
+            "gap_to_leader": None,
+            "dnf": False,
+            "dns": True,
+            "dsq": False,
+        }]
+
+        self.assertTrue(ingest_session_results(client, "bucket", 9693))
+        result = upload.call_args.args[2][0]
+        self.assertIsNone(result.number_of_laps)
+        self.assertTrue(result.dns)
     @patch("ingestors.main.upload_to_gcs")
     def test_empty_session_result_is_not_uploaded(self, upload):
         client = Mock()

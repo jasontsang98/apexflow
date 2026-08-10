@@ -120,6 +120,21 @@ class OpenF1ClientTests(unittest.TestCase):
         session.get.assert_called_once()
         sleep.assert_not_called()
 
+    def test_allowed_not_found_returns_empty_without_error(self):
+        client, session, sleep = self.make_client([self.response(404)])
+
+        with self.assertLogs("API-Client", level="INFO") as logs:
+            result = client.fetch_data(
+                "pit",
+                {"session_key": 9693, "driver_number": 6},
+                allow_not_found=True,
+            )
+
+        self.assertEqual(result, [])
+        self.assertIn("No OpenF1 pit data found", "\n".join(logs.output))
+        session.get.assert_called_once()
+        sleep.assert_not_called()
+
     def test_non_list_payload_is_rejected(self):
         client, _, _ = self.make_client([self.response(payload={"unexpected": True})])
 
@@ -144,7 +159,6 @@ class OpenF1ClientTests(unittest.TestCase):
             (client.get_sessions, (2025, "Race"), "sessions", {"year": 2025, "session_name": "Race"}),
             (client.get_drivers, (9693,), "drivers", {"session_key": 9693}),
             (client.get_stints, (9693, 4), "stints", {"session_key": 9693, "driver_number": 4}),
-            (client.get_pit_stops, (9693, 4), "pit", {"session_key": 9693, "driver_number": 4}),
             (client.get_weather, (9693,), "weather", {"session_key": 9693}),
             (client.get_race_control, (9693,), "race_control", {"session_key": 9693}),
             (client.get_session_results, (9693,), "session_result", {"session_key": 9693}),
@@ -156,6 +170,14 @@ class OpenF1ClientTests(unittest.TestCase):
                 client.fetch_data.reset_mock()
                 accessor(*args)
                 client.fetch_data.assert_called_once_with(endpoint, params)
+
+        client.fetch_data.reset_mock()
+        client.get_pit_stops(9693, 4)
+        client.fetch_data.assert_called_once_with(
+            "pit",
+            {"session_key": 9693, "driver_number": 4},
+            allow_not_found=True,
+        )
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ from dashboard.analytics import format_lap_time, overview_metrics, season_metric
 from dashboard.charts import (
     COMPOUND_COLOURS,
     fastest_lap_chart,
+    fastest_lap_telemetry_chart,
     lap_delta_chart,
     season_driver_chart,
     season_races_chart,
@@ -115,6 +116,15 @@ def load_v_min(session_key: int, driver_numbers: tuple[int, ...]) -> pd.DataFram
 @st.cache_data(ttl=900, show_spinner=False)
 def load_telemetry(session_key: int, driver_number: int, lap_number: int) -> pd.DataFrame:
     return repository().telemetry(session_key, driver_number, lap_number)
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def load_fastest_lap_telemetry(
+    session_key: int,
+    driver_numbers: tuple[int, ...],
+) -> pd.DataFrame:
+    return repository().fastest_lap_telemetry(session_key, driver_numbers)
+
 
 
 def stop_with_error(message: str) -> None:
@@ -433,6 +443,25 @@ with track_tab:
             how="left",
         )
         st.plotly_chart(v_min_track_chart(v_min), width="stretch", config={"displayModeBar": False})
+
+    st.subheader("Fastest-lap telemetry comparison")
+    st.markdown(
+        '<p class="section-note">Speed, throttle and brake traces from each selected driver\'s quickest valid lap.</p>',
+        unsafe_allow_html=True,
+    )
+    try:
+        fastest_telemetry = load_fastest_lap_telemetry(selected_session, driver_numbers)
+    except Exception as exc:
+        st.error(f"Could not load fastest-lap telemetry: {exc}")
+        fastest_telemetry = pd.DataFrame()
+    if fastest_telemetry.empty:
+        st.info("No fastest-lap telemetry exists for the selected drivers.")
+    else:
+        st.plotly_chart(
+            fastest_lap_telemetry_chart(fastest_telemetry),
+            width="stretch",
+            config={"displayModeBar": False},
+        )
 
     st.subheader("Single-lap telemetry")
     telemetry_columns = st.columns(2)

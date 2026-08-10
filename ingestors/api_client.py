@@ -44,7 +44,12 @@ class OpenF1Client:
 
         return min(float(2**attempt), 60.0)
 
-    def fetch_data(self, endpoint: str, params: dict) -> list:
+    def fetch_data(
+        self,
+        endpoint: str,
+        params: dict,
+        allow_not_found: bool = False,
+    ) -> list:
         url = f"{self.BASE_URL}/{endpoint}"
 
         for attempt in range(self.max_retries + 1):
@@ -81,6 +86,14 @@ class OpenF1Client:
                 )
                 self.sleep(backoff)
                 continue
+
+            if response.status_code == 404 and allow_not_found:
+                logger.info(
+                    "No OpenF1 %s data found for params %s",
+                    endpoint,
+                    params,
+                )
+                return []
 
             try:
                 response.raise_for_status()
@@ -129,7 +142,7 @@ class OpenF1Client:
         return self.fetch_data("pit", {
             "session_key": session_key,
             "driver_number": driver_number,
-        })
+        }, allow_not_found=True)
 
     def get_weather(self, session_key: int):
         return self.fetch_data("weather", {"session_key": session_key})

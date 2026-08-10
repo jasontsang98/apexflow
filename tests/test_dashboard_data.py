@@ -128,6 +128,24 @@ class DashboardRepositoryTests(unittest.TestCase):
         self.assertIn("fct_telemetry_enriched", sql)
         self.assertEqual([parameter.value for parameter in config.query_parameters], [9693, 4, 57])
 
+    def test_fastest_lap_telemetry_skips_empty_selection(self):
+        result = self.repository.fastest_lap_telemetry(9693, [])
+
+        self.assertTrue(result.empty)
+        self.client.query.assert_not_called()
+
+    def test_fastest_lap_telemetry_uses_selected_drivers(self):
+        self.repository.fastest_lap_telemetry(9693, [1, 4])
+
+        sql = self.client.query.call_args.args[0]
+        config = self.client.query.call_args.kwargs["job_config"]
+        self.assertIn("ARRAY_AGG", sql)
+        self.assertIn("AND NOT is_pit_out_lap", sql)
+        self.assertIn("fct_telemetry_enriched", sql)
+        self.assertEqual(config.query_parameters[0].value, 9693)
+        self.assertEqual(config.query_parameters[1].values, [1, 4])
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,7 +26,7 @@ class LapData(BaseModel):
     meeting_key: int
     driver_number: int
     lap_number: int
-    date_start: datetime
+    date_start: Optional[datetime] = None
     lap_duration: Optional[float] = None
     duration_sector_1: Optional[float] = None
     duration_sector_2: Optional[float] = None
@@ -145,7 +145,7 @@ class SessionResultData(BaseModel):
     meeting_key: int
     driver_number: int
     position: Optional[int] = None
-    number_of_laps: int
+    number_of_laps: Optional[int] = None
     points: float
     duration: Optional[float] = None
     gap_to_leader: Optional[str] = None
