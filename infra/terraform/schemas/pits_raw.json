@@ -1,0 +1,32 @@
+[
+  {
+    "name": "date",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "lap_number",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "lane_duration",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "stop_duration",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "session_key",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "driver_number",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  }
+]

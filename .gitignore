@@ -1,4 +1,12 @@
 # --- System / OS ---
+
+# Terraform local state and provider cache
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+
 .DS_Store
 Thumbs.db
 .vscode/
@@ -19,6 +27,7 @@ __pycache__/
 # --- Google Cloud & Security ---
 # Critical: Never commit service account keys or ADC JSONs
 *.json
+!infra/terraform/schemas/*.json
 !pyproject.toml   # Exception: we need this JSON-like file
 !uv.lock          # Exception: we need the lockfile
 

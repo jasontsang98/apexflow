@@ -1,0 +1,57 @@
+[
+  {
+    "name": "circuit_key",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "circuit_short_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "circuit_type",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "country_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "meeting_key",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "meeting_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "location",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "date_start",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "date_end",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "is_cancelled",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "year",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  }
+]

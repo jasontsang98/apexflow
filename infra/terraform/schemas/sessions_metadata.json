@@ -1,0 +1,37 @@
+[
+  {
+    "name": "session_key",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "session_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "session_type",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "meeting_key",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "date_start",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "date_end",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "year",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  }
+]

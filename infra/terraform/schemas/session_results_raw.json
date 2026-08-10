@@ -1,0 +1,57 @@
+[
+  {
+    "name": "session_key",
+    "type": "INTEGER",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "meeting_key",
+    "type": "INTEGER",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "driver_number",
+    "type": "INTEGER",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "position",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "number_of_laps",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "points",
+    "type": "FLOAT",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "duration",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "gap_to_leader",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "dnf",
+    "type": "BOOLEAN",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "dns",
+    "type": "BOOLEAN",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "dsq",
+    "type": "BOOLEAN",
+    "mode": "REQUIRED"
+  }
+]

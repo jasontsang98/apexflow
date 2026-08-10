@@ -1,0 +1,47 @@
+[
+  {
+    "name": "driver_number",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "date",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "category",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "flag",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "lap_number",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "sector",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "scope",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "message",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "session_key",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  }
+]

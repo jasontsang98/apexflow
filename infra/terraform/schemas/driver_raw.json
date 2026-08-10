@@ -1,0 +1,37 @@
+[
+  {
+    "name": "driver_number",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "broadcast_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "full_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "name_acronym",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "team_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "team_colour",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "session_key",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  }
+]
