@@ -43,6 +43,12 @@ docker compose -f docker-compose.airflow.yml up airflow-init
 docker compose -f docker-compose.airflow.yml up -d
 ```
 
+Read the generated local login password:
+
+```bash
+cat airflow/logs/simple_auth_manager_passwords.json.generated
+```
+
 Open `http://localhost:8080`, sign in as `airflow`, unpause
 `apexflow_season_ingestion`, and trigger it. The form defaults to `[2025]`;
 enter another year or multiple years as needed. The DAG is manual because
