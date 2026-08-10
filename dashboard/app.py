@@ -64,7 +64,6 @@ st.markdown(
 )
 
 
-@st.cache_resource
 def repository() -> DashboardRepository:
     return DashboardRepository()
 
