@@ -9,6 +9,7 @@ from .schemas import (
     LapData,
     LocationData,
     PitData,
+    SessionResultData,
     StintData,
     TelemetryData,
 )
@@ -60,6 +61,16 @@ def _ingest_driver_data(
         f"bronze/telemetry/session_key={session_key}/"
         f"driver_number={driver_number}/{filename}"
     )
+    upload_to_gcs(bucket_name, path, validated_data)
+    return True
+
+def ingest_session_results(client, bucket_name: str, session_key: int) -> bool:
+    raw_data = client.get_session_results(session_key)
+    if not raw_data:
+        return False
+
+    validated_data = [SessionResultData(**record) for record in raw_data]
+    path = f"bronze/telemetry/session_key={session_key}/session_result.json"
     upload_to_gcs(bucket_name, path, validated_data)
     return True
 
@@ -138,6 +149,7 @@ def run_ingestion():
     if not drivers:
         raise RuntimeError(f"No drivers returned for session {session_id}")
 
+    ingest_session_results(client, bucket_name, session_id)
     tasks = (
         ingest_driver_telemetry,
         ingest_driver_laps,

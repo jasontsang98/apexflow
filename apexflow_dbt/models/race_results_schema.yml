@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: stg_session_results
+    description: Official OpenF1 classified session results normalized for analytics.
+    columns:
+      - name: result_id
+        data_tests: [not_null, unique]
+      - name: session_key
+        data_tests: [not_null]
+      - name: driver_number
+        data_tests: [not_null]
+      - name: finishing_position
+        data_tests: [not_null]
+      - name: result_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Classified', 'DNF', 'DNS', 'DSQ']
+
+  - name: fct_race_results
+    description: Official race finishing order enriched with driver, team, season, and circuit context.
+    columns:
+      - name: result_id
+        data_tests: [not_null, unique]
+      - name: session_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_sessions')
+                field: session_key
+      - name: driver_number
+        data_tests: [not_null]
+      - name: full_name
+        data_tests: [not_null]
+      - name: finishing_position
+        data_tests: [not_null]
+      - name: points
+        data_tests: [not_null]
+      - name: result_status
+        data_tests: [not_null]

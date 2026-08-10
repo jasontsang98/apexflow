@@ -11,10 +11,11 @@ from ingestors.main import (
     ingest_driver_pit_stops,
     ingest_driver_stints,
     ingest_driver_telemetry,
+    ingest_session_results,
     run_ingestion,
     upload_to_gcs,
 )
-from ingestors.schemas import LapData, TelemetryData
+from ingestors.schemas import LapData, SessionResultData, TelemetryData
 
 
 class UploadTests(unittest.TestCase):
@@ -132,6 +133,41 @@ class DriverIngestionTests(unittest.TestCase):
         self.assertEqual(lap.segments_sector_1, [1.0, 2.0])
         self.assertEqual(lap.segments_sector_2, [])
 
+    @patch("ingestors.main.upload_to_gcs")
+    def test_session_results_are_validated_and_uploaded(self, upload):
+        client = Mock()
+        client.get_session_results.return_value = [{
+            "session_key": 9693,
+            "meeting_key": 1254,
+            "driver_number": 4,
+            "position": 1,
+            "number_of_laps": 57,
+            "points": 25.0,
+            "duration": 6126.304,
+            "gap_to_leader": 0,
+            "dnf": False,
+            "dns": False,
+            "dsq": False,
+        }]
+
+        result = ingest_session_results(client, "bucket", 9693)
+
+        self.assertTrue(result)
+        args = upload.call_args.args
+        self.assertEqual(args[:2], (
+            "bucket",
+            "bronze/telemetry/session_key=9693/session_result.json",
+        ))
+        self.assertIsInstance(args[2][0], SessionResultData)
+
+    @patch("ingestors.main.upload_to_gcs")
+    def test_empty_session_result_is_not_uploaded(self, upload):
+        client = Mock()
+        client.get_session_results.return_value = []
+
+        self.assertFalse(ingest_session_results(client, "bucket", 9693))
+        upload.assert_not_called()
+
 
 class RunIngestionTests(unittest.TestCase):
     @patch.dict("os.environ", {
@@ -146,10 +182,12 @@ class RunIngestionTests(unittest.TestCase):
     @patch("ingestors.main.ingest_driver_stints")
     @patch("ingestors.main.ingest_driver_laps")
     @patch("ingestors.main.ingest_driver_telemetry")
+    @patch("ingestors.main.ingest_session_results")
     @patch("ingestors.main.OpenF1Client")
     def test_runtime_configuration_and_all_driver_tasks(
         self,
         client_class,
+        session_results,
         telemetry,
         laps,
         stints,
@@ -176,6 +214,7 @@ class RunIngestionTests(unittest.TestCase):
         )
         for task in (telemetry, laps, stints, pits, locations):
             task.assert_called_once_with(client, "test-bucket", 42, 4)
+        session_results.assert_called_once_with(client, "test-bucket", 42)
 
     @patch("ingestors.main.OpenF1Client")
     def test_no_drivers_is_a_pipeline_failure(self, client_class):

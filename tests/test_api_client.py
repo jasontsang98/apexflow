@@ -147,6 +147,7 @@ class OpenF1ClientTests(unittest.TestCase):
             (client.get_pit_stops, (9693, 4), "pit", {"session_key": 9693, "driver_number": 4}),
             (client.get_weather, (9693,), "weather", {"session_key": 9693}),
             (client.get_race_control, (9693,), "race_control", {"session_key": 9693}),
+            (client.get_session_results, (9693,), "session_result", {"session_key": 9693}),
             (client.get_positions, (9693, 4), "position", {"session_key": 9693, "driver_number": 4}),
             (client.get_locations, (9693, 4), "location", {"session_key": 9693, "driver_number": 4}),
         )

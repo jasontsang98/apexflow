@@ -35,3 +35,25 @@ Compile the dbt project:
 ```bash
 uv run dbt compile --project-dir apexflow_dbt
 ```
+
+## Dashboard
+
+The Streamlit dashboard reads from the analytics-ready BigQuery Gold layer.
+Application Default Credentials must have permission to run BigQuery jobs and
+read the `apexflow_gold` and `apexflow_silver` datasets.
+
+Run it from the repository root:
+
+```bash
+uv run streamlit run dashboard/app.py
+```
+
+By default the dashboard uses the `apexflow-f1` Google Cloud project. Override
+it when needed:
+
+```bash
+export APEXFLOW_BQ_PROJECT="your-project-id"
+uv run streamlit run dashboard/app.py
+```
+
+BigQuery results are cached for 15 minutes to limit repeated query costs.
