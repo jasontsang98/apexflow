@@ -239,3 +239,49 @@ def telemetry_chart(telemetry: pd.DataFrame) -> go.Figure:
     if speed_range:
         figure.update_yaxes(range=speed_range, secondary_y=False)
     return _style(figure, 480)
+
+
+def fastest_lap_telemetry_chart(telemetry: pd.DataFrame) -> go.Figure:
+    figure = make_subplots(
+        rows=3,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.06,
+        subplot_titles=("Speed", "Throttle", "Brake"),
+    )
+    metrics = (
+        ("speed", "Speed", 1, None),
+        ("throttle", "Throttle", 2, None),
+        ("brake", "Brake", 3, 100),
+    )
+    for driver_number, driver_data in telemetry.groupby("driver_number", sort=False):
+        data = add_elapsed_time(driver_data.sort_values("telemetry_timestamp"))
+        label = str(data["name_acronym"].iloc[0])
+        colour = str(data["team_colour_hex"].iloc[0])
+        hover_name = str(data["full_name"].iloc[0])
+        lap_number = int(data["lap_number"].iloc[0])
+        for metric, metric_label, row, multiplier in metrics:
+            values = data[metric] * multiplier if multiplier else data[metric]
+            figure.add_trace(
+                go.Scatter(
+                    x=data["elapsed_seconds"],
+                    y=values,
+                    name=label,
+                    legendgroup=str(driver_number),
+                    showlegend=row == 1,
+                    line=dict(color=colour, width=2),
+                    customdata=[[hover_name, lap_number]] * len(data),
+                    hovertemplate=(
+                        "<b>%{customdata[0]}</b> - Lap %{customdata[1]}<br>"
+                        f"{metric_label}: %{{y:.1f}}<br>Elapsed: %{{x:.2f}}s<extra></extra>"
+                    ),
+                ),
+                row=row,
+                col=1,
+            )
+    figure.update_layout(title="Selected drivers fastest-lap telemetry")
+    figure.update_xaxes(title="Elapsed lap time (s)", row=3, col=1)
+    figure.update_yaxes(title="km/h", row=1, col=1)
+    figure.update_yaxes(title="%", range=[0, 105], row=2, col=1)
+    figure.update_yaxes(title="%", range=[0, 105], row=3, col=1)
+    return _style(figure, 720)

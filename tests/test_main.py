@@ -11,6 +11,7 @@ from ingestors.main import (
     ingest_driver_pit_stops,
     ingest_driver_stints,
     ingest_driver_telemetry,
+    ingest_race_session,
     ingest_session_results,
     run_ingestion,
     upload_to_gcs,
@@ -133,6 +134,18 @@ class DriverIngestionTests(unittest.TestCase):
         self.assertEqual(lap.segments_sector_1, [1.0, 2.0])
         self.assertEqual(lap.segments_sector_2, [])
 
+    def test_lap_schema_allows_missing_start_timestamp(self):
+        lap = LapData(
+            session_key=10033,
+            meeting_key=1276,
+            driver_number=1,
+            lap_number=1,
+            date_start=None,
+            is_pit_out_lap=False,
+        )
+
+        self.assertIsNone(lap.date_start)
+
     @patch("ingestors.main.upload_to_gcs")
     def test_session_results_are_validated_and_uploaded(self, upload):
         client = Mock()
@@ -161,6 +174,27 @@ class DriverIngestionTests(unittest.TestCase):
         self.assertIsInstance(args[2][0], SessionResultData)
 
     @patch("ingestors.main.upload_to_gcs")
+    def test_dns_session_result_allows_null_lap_count(self, upload):
+        client = Mock()
+        client.get_session_results.return_value = [{
+            "session_key": 9693,
+            "meeting_key": 1254,
+            "driver_number": 6,
+            "position": None,
+            "number_of_laps": None,
+            "points": 0.0,
+            "duration": None,
+            "gap_to_leader": None,
+            "dnf": False,
+            "dns": True,
+            "dsq": False,
+        }]
+
+        self.assertTrue(ingest_session_results(client, "bucket", 9693))
+        result = upload.call_args.args[2][0]
+        self.assertIsNone(result.number_of_laps)
+        self.assertTrue(result.dns)
+    @patch("ingestors.main.upload_to_gcs")
     def test_empty_session_result_is_not_uploaded(self, upload):
         client = Mock()
         client.get_session_results.return_value = []
@@ -177,6 +211,7 @@ class RunIngestionTests(unittest.TestCase):
         "OPENF1_REQUEST_TIMEOUT": "5",
         "OPENF1_MAX_RETRIES": "1",
     }, clear=True)
+    @patch("ingestors.main.upload_to_gcs")
     @patch("ingestors.main.ingest_driver_locations")
     @patch("ingestors.main.ingest_driver_pit_stops")
     @patch("ingestors.main.ingest_driver_stints")
@@ -193,6 +228,7 @@ class RunIngestionTests(unittest.TestCase):
         stints,
         pits,
         locations,
+        upload,
     ):
         client = client_class.return_value
         client.get_drivers.return_value = [{
@@ -204,6 +240,8 @@ class RunIngestionTests(unittest.TestCase):
             "team_colour": "FF8000",
             "session_key": 42,
         }]
+        client.get_weather.return_value = []
+        client.get_race_control.return_value = []
 
         run_ingestion()
 
@@ -215,6 +253,34 @@ class RunIngestionTests(unittest.TestCase):
         for task in (telemetry, laps, stints, pits, locations):
             task.assert_called_once_with(client, "test-bucket", 42, 4)
         session_results.assert_called_once_with(client, "test-bucket", 42)
+        upload.assert_called_once()
+
+    @patch("ingestors.main.upload_to_gcs")
+    @patch("ingestors.main._ingest_session_data")
+    @patch("ingestors.main.ingest_session_results")
+    @patch("ingestors.main.ingest_driver_telemetry")
+    @patch("ingestors.main.ingest_driver_laps")
+    @patch("ingestors.main.ingest_driver_stints")
+    @patch("ingestors.main.ingest_driver_pit_stops")
+    @patch("ingestors.main.ingest_driver_locations")
+    def test_race_ingestion_is_idempotently_partitioned_by_session(
+        self, locations, pits, stints, laps, telemetry, results, session_data, upload
+    ):
+        client = Mock()
+        client.get_drivers.return_value = [{
+            "driver_number": 4, "broadcast_name": "L NORRIS", "full_name": "Lando Norris",
+            "name_acronym": "NOR", "team_name": "McLaren", "team_colour": "FF8000",
+            "session_key": 9693,
+        }]
+
+        summary = ingest_race_session(9693, "bucket", client)
+
+        self.assertEqual(summary, {"session_key": 9693, "drivers": 1})
+        self.assertEqual(upload.call_args.args[1], "bronze/telemetry/session_key=9693/drivers.json")
+        self.assertEqual(session_data.call_count, 2)
+        results.assert_called_once_with(client, "bucket", 9693)
+        for task in (telemetry, laps, stints, pits, locations):
+            task.assert_called_once_with(client, "bucket", 9693, 4)
 
     @patch("ingestors.main.OpenF1Client")
     def test_no_drivers_is_a_pipeline_failure(self, client_class):

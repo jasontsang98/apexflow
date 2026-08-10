@@ -4,6 +4,7 @@ import pandas as pd
 
 from dashboard.charts import (
     fastest_lap_chart,
+    fastest_lap_telemetry_chart,
     lap_delta_chart,
     season_driver_chart,
     season_races_chart,
@@ -112,6 +113,35 @@ class DashboardChartTests(unittest.TestCase):
         })
         figure = telemetry_chart(telemetry)
         self.assertEqual([trace.name for trace in figure.data], ["Speed", "Throttle", "Brake"])
+
+    def test_fastest_lap_telemetry_chart_compares_each_driver(self):
+        telemetry = pd.DataFrame([
+            {
+                "telemetry_timestamp": "2025-01-01T00:00:00Z", "driver_number": 4,
+                "name_acronym": "NOR", "full_name": "Lando Norris",
+                "team_colour_hex": "#FF8000", "lap_number": 50,
+                "speed": 100, "throttle": 50, "brake": 0,
+            },
+            {
+                "telemetry_timestamp": "2025-01-01T00:00:01Z", "driver_number": 4,
+                "name_acronym": "NOR", "full_name": "Lando Norris",
+                "team_colour_hex": "#FF8000", "lap_number": 50,
+                "speed": 120, "throttle": 100, "brake": 1,
+            },
+            {
+                "telemetry_timestamp": "2025-01-01T00:00:00Z", "driver_number": 1,
+                "name_acronym": "VER", "full_name": "Max Verstappen",
+                "team_colour_hex": "#3671C6", "lap_number": 48,
+                "speed": 105, "throttle": 60, "brake": 0,
+            },
+        ])
+
+        figure = fastest_lap_telemetry_chart(telemetry)
+
+        self.assertEqual(len(figure.data), 6)
+        self.assertEqual([trace.name for trace in figure.data if trace.showlegend], ["NOR", "VER"])
+        self.assertEqual(figure.layout.height, 720)
+
 
 
 if __name__ == "__main__":

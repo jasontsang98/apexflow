@@ -247,3 +247,49 @@ class DashboardRepository:
                 bigquery.ScalarQueryParameter("lap_number", "INT64", lap_number),
             ],
         )
+
+    def fastest_lap_telemetry(
+        self,
+        session_key: int,
+        driver_numbers: Sequence[int],
+    ) -> pd.DataFrame:
+        if not driver_numbers:
+            return pd.DataFrame()
+        return self._query(
+            f"""
+                WITH fastest_laps AS (
+                    SELECT
+                        driver_number,
+                        ARRAY_AGG(
+                            lap_number ORDER BY lap_duration, lap_number LIMIT 1
+                        )[OFFSET(0)] AS lap_number
+                    FROM `{self.project}.apexflow_gold.fct_dashboard_laps`
+                    WHERE
+                        session_key = @session_key
+                        AND driver_number IN UNNEST(@driver_numbers)
+                        AND lap_duration IS NOT NULL
+                        AND NOT is_pit_out_lap
+                    GROUP BY driver_number
+                )
+                SELECT
+                    telemetry.telemetry_timestamp,
+                    telemetry.driver_number,
+                    drivers.full_name,
+                    drivers.name_acronym,
+                    drivers.team_colour_hex,
+                    telemetry.lap_number,
+                    telemetry.speed,
+                    telemetry.throttle,
+                    telemetry.brake
+                FROM `{self.project}.apexflow_silver.fct_telemetry_enriched` AS telemetry
+                JOIN fastest_laps USING (driver_number, lap_number)
+                JOIN `{self.project}.apexflow_gold.dim_drivers` AS drivers
+                    USING (session_key, driver_number)
+                WHERE telemetry.session_key = @session_key
+                ORDER BY telemetry.driver_number, telemetry.telemetry_timestamp
+            """,
+            [
+                bigquery.ScalarQueryParameter("session_key", "INT64", session_key),
+                bigquery.ArrayQueryParameter("driver_numbers", "INT64", list(driver_numbers)),
+            ],
+        )
