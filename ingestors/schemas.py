@@ -138,3 +138,24 @@ class RaceControlData(BaseModel):
     sector: Optional[int] = None
     driver_number: Optional[int] = None
     scope: Optional[str] = None
+
+class SessionResultData(BaseModel):
+    """Official classified result for one driver in a race session."""
+    session_key: int
+    meeting_key: int
+    driver_number: int
+    position: Optional[int] = None
+    number_of_laps: int
+    points: float
+    duration: Optional[float] = None
+    gap_to_leader: Optional[str] = None
+    dnf: bool
+    dns: bool
+    dsq: bool
+
+    @field_validator("gap_to_leader", mode="before")
+    @classmethod
+    def normalize_gap_to_leader(cls, value):
+        if value is None:
+            return None
+        return str(value)

@@ -57,6 +57,24 @@ class DashboardRepositoryTests(unittest.TestCase):
         self.assertIn("average_delta_to_best", sql)
         self.assertEqual(config.query_parameters[0].value, 2025)
 
+    def test_season_winners_uses_year_parameter(self):
+        self.repository.season_winners(2025)
+
+        sql = self.client.query.call_args.args[0]
+        config = self.client.query.call_args.kwargs["job_config"]
+        self.assertIn("fct_race_results", sql)
+        self.assertIn("COUNTIF(finishing_position = 1)", sql)
+        self.assertEqual(config.query_parameters[0].value, 2025)
+
+    def test_race_results_uses_session_parameter(self):
+        self.repository.race_results(9693)
+
+        sql = self.client.query.call_args.args[0]
+        config = self.client.query.call_args.kwargs["job_config"]
+        self.assertIn("fct_race_results", sql)
+        self.assertIn("ORDER BY finishing_position", sql)
+        self.assertEqual(config.query_parameters[0].value, 9693)
+
     def test_drivers_uses_session_parameter(self):
         self.repository.drivers(9693)
 

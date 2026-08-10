@@ -92,6 +92,50 @@ class DashboardRepository:
             [bigquery.ScalarQueryParameter("season", "INT64", season)],
         )
 
+    def season_winners(self, season: int) -> pd.DataFrame:
+        return self._query(
+            f"""
+                SELECT
+                    driver_number,
+                    ANY_VALUE(full_name) AS full_name,
+                    ANY_VALUE(name_acronym) AS name_acronym,
+                    ANY_VALUE(team_name) AS team_name,
+                    ANY_VALUE(team_colour_hex) AS team_colour_hex,
+                    COUNTIF(finishing_position = 1) AS wins,
+                    COUNTIF(finishing_position <= 3) AS podiums,
+                    SUM(points) AS points
+                FROM `{self.project}.apexflow_gold.fct_race_results`
+                WHERE season = @season
+                GROUP BY driver_number
+                HAVING wins > 0
+                ORDER BY wins DESC, points DESC
+            """,
+            [bigquery.ScalarQueryParameter("season", "INT64", season)],
+        )
+
+    def race_results(self, session_key: int) -> pd.DataFrame:
+        return self._query(
+            f"""
+                SELECT
+                    result_id,
+                    session_key,
+                    driver_number,
+                    full_name,
+                    name_acronym,
+                    team_name,
+                    team_colour_hex,
+                    finishing_position,
+                    number_of_laps,
+                    points,
+                    gap_to_leader,
+                    result_status
+                FROM `{self.project}.apexflow_gold.fct_race_results`
+                WHERE session_key = @session_key
+                ORDER BY finishing_position
+            """,
+            [bigquery.ScalarQueryParameter("session_key", "INT64", session_key)],
+        )
+
     def drivers(self, session_key: int) -> pd.DataFrame:
         return self._query(
             f"""

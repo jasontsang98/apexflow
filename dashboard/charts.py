@@ -82,6 +82,30 @@ def season_driver_chart(drivers: pd.DataFrame) -> go.Figure:
     return _style(figure, max(430, len(data) * 26))
 
 
+def season_winners_chart(winners: pd.DataFrame) -> go.Figure:
+    data = winners.sort_values(["wins", "points"], ascending=True)
+    figure = px.bar(
+        data,
+        x="wins",
+        y="name_acronym",
+        orientation="h",
+        color="team_colour_hex",
+        color_discrete_map="identity",
+        custom_data=["full_name", "team_name", "podiums", "points"],
+        title="Winning drivers",
+    )
+    figure.update_traces(
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>%{customdata[1]}<br>"
+            "%{x} wins · %{customdata[2]} podiums · %{customdata[3]:g} points<extra></extra>"
+        )
+    )
+    figure.update_layout(showlegend=False)
+    figure.update_xaxes(title="Race wins", dtick=1)
+    figure.update_yaxes(title=None)
+    return _style(figure, max(330, len(data) * 55))
+
+
 def fastest_lap_chart(laps: pd.DataFrame) -> go.Figure:
     data = fastest_laps(laps).sort_values("lap_duration", ascending=False)
     figure = px.bar(

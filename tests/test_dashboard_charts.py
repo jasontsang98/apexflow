@@ -7,6 +7,7 @@ from dashboard.charts import (
     lap_delta_chart,
     season_driver_chart,
     season_races_chart,
+    season_winners_chart,
     telemetry_chart,
     tire_degradation_chart,
     v_min_track_chart,
@@ -79,6 +80,22 @@ class DashboardChartTests(unittest.TestCase):
         ])
         figure = season_driver_chart(drivers)
         self.assertGreaterEqual(len(figure.data), 1)
+        self.assertEqual(figure.layout.showlegend, False)
+
+    def test_season_winners_chart(self):
+        winners = pd.DataFrame([
+            {
+                "name_acronym": "NOR", "full_name": "Lando Norris", "team_name": "McLaren",
+                "team_colour_hex": "#FF8000", "wins": 2, "podiums": 3, "points": 62,
+            },
+            {
+                "name_acronym": "VER", "full_name": "Max Verstappen", "team_name": "Red Bull Racing",
+                "team_colour_hex": "#3671C6", "wins": 1, "podiums": 2, "points": 51,
+            },
+        ])
+        figure = season_winners_chart(winners)
+        self.assertGreaterEqual(len(figure.data), 1)
+        self.assertEqual(figure.layout.xaxis.dtick, 1)
         self.assertEqual(figure.layout.showlegend, False)
 
     def test_v_min_track_chart_locks_track_aspect_ratio(self):

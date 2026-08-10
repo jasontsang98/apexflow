@@ -14,3 +14,4 @@ sources:
       - name: driver_raw
       - name: sessions_metadata
       - name: meetings_metadata
+      - name: session_results_raw

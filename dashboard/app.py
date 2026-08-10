@@ -15,6 +15,7 @@ from dashboard.charts import (
     lap_delta_chart,
     season_driver_chart,
     season_races_chart,
+    season_winners_chart,
     telemetry_chart,
     tire_degradation_chart,
     v_min_track_chart,
@@ -83,6 +84,16 @@ def load_season_drivers(season: int) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=900, show_spinner=False)
+def load_season_winners(season: int) -> pd.DataFrame:
+    return repository().season_winners(season)
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def load_race_results(session_key: int) -> pd.DataFrame:
+    return repository().race_results(session_key)
+
+
+@st.cache_data(ttl=900, show_spinner=False)
 def load_drivers(session_key: int) -> pd.DataFrame:
     return repository().drivers(session_key)
 
@@ -148,6 +159,7 @@ if dashboard_view == "Season overview":
     try:
         season_races = load_season_races(selected_season)
         season_drivers = load_season_drivers(selected_season)
+        season_winners = load_season_winners(selected_season)
     except Exception as exc:
         stop_with_error(f"Could not load season data: {exc}")
 
@@ -194,6 +206,31 @@ if dashboard_view == "Season overview":
         config={"displayModeBar": False},
     )
 
+    st.subheader("Winning drivers")
+    st.markdown(
+        '<p class="section-note">Official race winners and podium totals from the ingested classification data.</p>',
+        unsafe_allow_html=True,
+    )
+    if season_winners.empty:
+        st.info("No official race classifications are available for this season yet.")
+    else:
+        st.plotly_chart(
+            season_winners_chart(season_winners),
+            width="stretch",
+            config={"displayModeBar": False},
+        )
+        st.dataframe(
+            season_winners[["full_name", "team_name", "wins", "podiums", "points"]].rename(columns={
+                "full_name": "Driver",
+                "team_name": "Team",
+                "wins": "Wins",
+                "podiums": "Podiums",
+                "points": "Points",
+            }),
+            hide_index=True,
+            width="stretch",
+        )
+
     race_table = season_races.copy()
     race_table["Fastest lap"] = race_table["fastest_lap"].map(format_lap_time)
     race_table["Conditions"] = race_table["was_wet"].map({True: "Wet", False: "Dry"}).fillna("Unknown")
@@ -223,14 +260,21 @@ with st.sidebar:
 
     try:
         drivers = load_drivers(selected_session)
+        race_results = load_race_results(selected_session)
     except Exception as exc:
-        stop_with_error(f"Could not load drivers: {exc}")
+        stop_with_error(f"Could not load race drivers and results: {exc}")
 
     driver_labels = {
         int(row.driver_number): f"{row.name_acronym} · {row.team_name}"
         for row in drivers.itertuples()
     }
-    default_drivers = list(driver_labels)[: min(4, len(driver_labels))]
+    podium_numbers = (
+        race_results.sort_values("finishing_position").head(3)["driver_number"].tolist()
+        if not race_results.empty else []
+    )
+    default_drivers = [int(number) for number in podium_numbers if int(number) in driver_labels]
+    if not default_drivers:
+        default_drivers = list(driver_labels)[: min(3, len(driver_labels))]
     selected_drivers = st.multiselect(
         "Drivers",
         options=list(driver_labels),
@@ -267,6 +311,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+if race_results.empty:
+    st.info("Official race classification is not available for this session yet.")
+else:
+    podium = race_results.sort_values("finishing_position").head(3)
+    podium_columns = st.columns(3)
+    podium_labels = ["Winner", "Second place", "Third place"]
+    for index, row in enumerate(podium.itertuples()):
+        detail = row.team_name
+        if pd.notna(row.points):
+            detail = f"{detail} · {row.points:g} pts"
+        podium_columns[index].metric(
+            f"P{int(row.finishing_position)} · {podium_labels[index]}",
+            row.full_name,
+            detail,
+        )
+
 if laps.empty:
     st.warning("No lap data exists for the selected drivers.")
     st.stop()
@@ -284,6 +344,23 @@ overview_tab, laps_tab, tires_tab, track_tab = st.tabs(
 
 with overview_tab:
     st.subheader("Race pace snapshot")
+    if not race_results.empty:
+        st.markdown("#### Official classification")
+        st.dataframe(
+            race_results[["finishing_position", "full_name", "team_name", "points", "gap_to_leader", "result_status"]]
+            .rename(columns={
+                "finishing_position": "Position",
+                "full_name": "Driver",
+                "team_name": "Team",
+                "points": "Points",
+                "gap_to_leader": "Gap",
+                "result_status": "Status",
+            }),
+            hide_index=True,
+            width="stretch",
+        )
+
+    st.markdown("#### Selected-driver pace")
     st.markdown('<p class="section-note">Each driver’s quickest valid lap in the selected session.</p>', unsafe_allow_html=True)
     st.plotly_chart(fastest_lap_chart(laps), width="stretch", config={"displayModeBar": False})
 

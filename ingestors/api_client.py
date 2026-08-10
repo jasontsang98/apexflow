@@ -137,6 +137,9 @@ class OpenF1Client:
     def get_race_control(self, session_key: int):
         return self.fetch_data("race_control", {"session_key": session_key})
 
+    def get_session_results(self, session_key: int):
+        return self.fetch_data("session_result", {"session_key": session_key})
+
     def get_positions(self, session_key: int, driver_number: int):
         return self.fetch_data("position", {
             "session_key": session_key,
