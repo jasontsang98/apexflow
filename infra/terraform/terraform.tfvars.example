@@ -1,0 +1,4 @@
+project_id                  = "apexflow-f1"
+region                      = "australia-southeast1"
+raw_bucket_name             = "apexflow-raw-data"
+pipeline_service_account_id = "apexflow-pipeline"

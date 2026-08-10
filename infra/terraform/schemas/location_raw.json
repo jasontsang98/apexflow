@@ -1,0 +1,32 @@
+[
+  {
+    "name": "date",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "x",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "y",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "z",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "session_key",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "driver_number",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  }
+]

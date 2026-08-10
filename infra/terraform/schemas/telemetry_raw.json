@@ -1,0 +1,47 @@
+[
+  {
+    "name": "date",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "speed",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "rpm",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "n_gear",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "throttle",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "brake",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "drs",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "session_key",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "driver_number",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  }
+]
