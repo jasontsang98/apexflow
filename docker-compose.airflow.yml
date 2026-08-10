@@ -20,6 +20,8 @@ x-airflow-common: &airflow-common
     OPENF1_REQUEST_TIMEOUT: ${OPENF1_REQUEST_TIMEOUT:-60}
     OPENF1_MAX_RETRIES: ${OPENF1_MAX_RETRIES:-4}
     GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/gcp/application_default_credentials.json
+    GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-apexflow-f1}
+    GCLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-apexflow-f1}
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - .:/opt/airflow/apexflow

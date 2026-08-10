@@ -36,6 +36,7 @@ Compose plus Google Application Default Credentials:
 
 ```bash
 gcloud auth application-default login
+gcloud config set project apexflow-f1
 mkdir -p airflow/logs
 echo "AIRFLOW_UID=$(id -u)" > .env
 docker compose -f docker-compose.airflow.yml build
