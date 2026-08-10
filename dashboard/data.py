@@ -42,6 +42,56 @@ class DashboardRepository:
             ORDER BY session_start DESC
         """)
 
+    def season_races(self, season: int) -> pd.DataFrame:
+        return self._query(
+            f"""
+                SELECT
+                    laps.session_key,
+                    ANY_VALUE(laps.meeting_name) AS meeting_name,
+                    ANY_VALUE(laps.circuit_short_name) AS circuit_short_name,
+                    ANY_VALUE(laps.country_name) AS country_name,
+                    ANY_VALUE(laps.location) AS location,
+                    ANY_VALUE(sessions.session_start) AS session_start,
+                    COUNT(DISTINCT laps.driver_number) AS driver_count,
+                    COUNT(*) AS lap_count,
+                    MIN(laps.lap_duration) AS fastest_lap,
+                    ARRAY_AGG(
+                        laps.name_acronym ORDER BY laps.lap_duration LIMIT 1
+                    )[OFFSET(0)] AS fastest_driver,
+                    MAX(laps.top_speed) AS top_speed,
+                    LOGICAL_OR(laps.rained_during_lap) AS was_wet
+                FROM `{self.project}.apexflow_gold.fct_dashboard_laps` AS laps
+                JOIN `{self.project}.apexflow_gold.dim_sessions` AS sessions
+                    USING (session_key)
+                WHERE laps.season = @season
+                GROUP BY laps.session_key
+                ORDER BY session_start
+            """,
+            [bigquery.ScalarQueryParameter("season", "INT64", season)],
+        )
+
+    def season_drivers(self, season: int) -> pd.DataFrame:
+        return self._query(
+            f"""
+                SELECT
+                    driver_number,
+                    ANY_VALUE(full_name) AS full_name,
+                    ANY_VALUE(name_acronym) AS name_acronym,
+                    ANY_VALUE(team_name) AS team_name,
+                    ANY_VALUE(team_colour_hex) AS team_colour_hex,
+                    COUNT(DISTINCT session_key) AS races,
+                    COUNT(*) AS laps,
+                    MIN(lap_duration) AS fastest_lap,
+                    AVG(delta_to_driver_best) AS average_delta_to_best,
+                    MAX(top_speed) AS top_speed
+                FROM `{self.project}.apexflow_gold.fct_dashboard_laps`
+                WHERE season = @season
+                GROUP BY driver_number
+                ORDER BY fastest_lap
+            """,
+            [bigquery.ScalarQueryParameter("season", "INT64", season)],
+        )
+
     def drivers(self, session_key: int) -> pd.DataFrame:
         return self._query(
             f"""

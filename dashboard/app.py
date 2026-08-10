@@ -8,11 +8,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboard.analytics import format_lap_time, overview_metrics
+from dashboard.analytics import format_lap_time, overview_metrics, season_metrics
 from dashboard.charts import (
     COMPOUND_COLOURS,
     fastest_lap_chart,
     lap_delta_chart,
+    season_driver_chart,
+    season_races_chart,
     telemetry_chart,
     tire_degradation_chart,
     v_min_track_chart,
@@ -70,6 +72,15 @@ def repository() -> DashboardRepository:
 def load_sessions() -> pd.DataFrame:
     return repository().sessions()
 
+@st.cache_data(ttl=900, show_spinner=False)
+def load_season_races(season: int) -> pd.DataFrame:
+    return repository().season_races(season)
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def load_season_drivers(season: int) -> pd.DataFrame:
+    return repository().season_drivers(season)
+
 
 @st.cache_data(ttl=900, show_spinner=False)
 def load_drivers(session_key: int) -> pd.DataFrame:
@@ -115,9 +126,95 @@ session_labels = {
     for row in sessions.itertuples()
 }
 
+season_options = sorted((int(value) for value in sessions["season"].unique()), reverse=True)
+
 with st.sidebar:
     st.markdown("### APEXFLOW")
     st.caption("Race intelligence console")
+    dashboard_view = st.radio(
+        "Dashboard view",
+        options=["Season overview", "Race detail"],
+        horizontal=True,
+    )
+
+if dashboard_view == "Season overview":
+    with st.sidebar:
+        selected_season = st.selectbox("Season", options=season_options)
+        st.divider()
+        st.caption("Data source")
+        st.markdown("**BigQuery · Gold layer**")
+        st.caption("Only ingested races are included")
+
+    try:
+        season_races = load_season_races(selected_season)
+        season_drivers = load_season_drivers(selected_season)
+    except Exception as exc:
+        stop_with_error(f"Could not load season data: {exc}")
+
+    st.markdown(
+        f"""
+        <div class="hero">
+          <div class="eyebrow">Season intelligence</div>
+          <h1>{selected_season} Season</h1>
+          <p>A year-level view of every race currently processed through the ApexFlow telemetry lakehouse.</p>
+          <div class="session-chip"><span>●</span>{len(season_races)} races available in the Gold layer</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if season_races.empty:
+        st.warning("No race summaries are available for this season.")
+        st.stop()
+
+    annual_metrics = season_metrics(season_races, season_drivers)
+    season_columns = st.columns(4)
+    season_columns[0].metric("Races analysed", annual_metrics["race_count"])
+    season_columns[1].metric("Drivers", annual_metrics["driver_count"])
+    season_columns[2].metric("Laps analysed", annual_metrics["lap_count"])
+    season_columns[3].metric(
+        "Season fastest lap",
+        annual_metrics["fastest_lap"],
+        annual_metrics["fastest_driver"],
+    )
+
+    st.subheader("Season at a glance")
+    st.markdown(
+        '<p class="section-note">Race summaries expand automatically as new sessions are ingested and transformed.</p>',
+        unsafe_allow_html=True,
+    )
+    st.plotly_chart(
+        season_races_chart(season_races),
+        width="stretch",
+        config={"displayModeBar": False},
+    )
+    st.plotly_chart(
+        season_driver_chart(season_drivers),
+        width="stretch",
+        config={"displayModeBar": False},
+    )
+
+    race_table = season_races.copy()
+    race_table["Fastest lap"] = race_table["fastest_lap"].map(format_lap_time)
+    race_table["Conditions"] = race_table["was_wet"].map({True: "Wet", False: "Dry"}).fillna("Unknown")
+    st.dataframe(
+        race_table[[
+            "meeting_name", "circuit_short_name", "fastest_driver", "Fastest lap",
+            "top_speed", "driver_count", "lap_count", "Conditions",
+        ]].rename(columns={
+            "meeting_name": "Race",
+            "circuit_short_name": "Circuit",
+            "fastest_driver": "Fastest driver",
+            "top_speed": "Top speed",
+            "driver_count": "Drivers",
+            "lap_count": "Laps",
+        }),
+        hide_index=True,
+        width="stretch",
+    )
+    st.stop()
+
+with st.sidebar:
     selected_session = st.selectbox(
         "Race session",
         options=list(session_labels),

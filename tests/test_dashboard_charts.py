@@ -5,6 +5,8 @@ import pandas as pd
 from dashboard.charts import (
     fastest_lap_chart,
     lap_delta_chart,
+    season_driver_chart,
+    season_races_chart,
     telemetry_chart,
     tire_degradation_chart,
     v_min_track_chart,
@@ -45,6 +47,39 @@ class DashboardChartTests(unittest.TestCase):
         )
         figure = tire_degradation_chart(tires)
         self.assertEqual(len(figure.data), 2)
+
+    def test_season_races_chart(self):
+        races = pd.DataFrame([
+            {
+                "session_start": "2025-03-16", "meeting_name": "Australian Grand Prix",
+                "circuit_short_name": "Melbourne", "fastest_driver": "NOR",
+                "fastest_lap": 79.8, "lap_count": 921, "driver_count": 17, "was_wet": True,
+            },
+            {
+                "session_start": "2025-03-23", "meeting_name": "Chinese Grand Prix",
+                "circuit_short_name": "Shanghai", "fastest_driver": "VER",
+                "fastest_lap": 92.1, "lap_count": 850, "driver_count": 20, "was_wet": False,
+            },
+        ])
+        figure = season_races_chart(races)
+        self.assertEqual(len(figure.data), 2)
+
+    def test_season_driver_chart(self):
+        drivers = pd.DataFrame([
+            {
+                "name_acronym": "NOR", "full_name": "Lando Norris", "team_name": "McLaren",
+                "team_colour_hex": "#FF8000", "races": 2, "laps": 110,
+                "average_delta_to_best": 1.2, "top_speed": 315,
+            },
+            {
+                "name_acronym": "VER", "full_name": "Max Verstappen", "team_name": "Red Bull Racing",
+                "team_colour_hex": "#3671C6", "races": 2, "laps": 112,
+                "average_delta_to_best": 1.0, "top_speed": 318,
+            },
+        ])
+        figure = season_driver_chart(drivers)
+        self.assertGreaterEqual(len(figure.data), 1)
+        self.assertEqual(figure.layout.showlegend, False)
 
     def test_v_min_track_chart_locks_track_aspect_ratio(self):
         points = self.laps.assign(x=[10.0, 20.0], y=[30.0, 40.0], lap_v_min=[85, 90], v_min_gear=[3, 4])

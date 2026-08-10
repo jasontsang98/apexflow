@@ -8,6 +8,7 @@ from dashboard.analytics import (
     format_lap_time,
     overview_metrics,
     safe_axis_range,
+    season_metrics,
 )
 
 
@@ -45,6 +46,34 @@ class DashboardAnalyticsTests(unittest.TestCase):
 
     def test_overview_metrics_handles_empty_data(self):
         self.assertEqual(overview_metrics(pd.DataFrame())["lap_count"], "0")
+
+    def test_season_metrics(self):
+        races = pd.DataFrame([
+            {"fastest_lap": 80.5, "fastest_driver": "NOR", "lap_count": 921},
+            {"fastest_lap": 91.1, "fastest_driver": "VER", "lap_count": 850},
+        ])
+        drivers = pd.DataFrame({"driver_number": [1, 4, 81]})
+
+        result = season_metrics(races, drivers)
+
+        self.assertEqual(result, {
+            "race_count": "2",
+            "driver_count": "3",
+            "lap_count": "1,771",
+            "fastest_lap": "1:20.500",
+            "fastest_driver": "NOR",
+        })
+
+    def test_season_metrics_handles_empty_data(self):
+        result = season_metrics(pd.DataFrame(), pd.DataFrame())
+
+        self.assertEqual(result, {
+            "race_count": "0",
+            "driver_count": "0",
+            "lap_count": "0",
+            "fastest_lap": "—",
+            "fastest_driver": "—",
+        })
 
     def test_add_elapsed_time_uses_first_timestamp(self):
         telemetry = pd.DataFrame({

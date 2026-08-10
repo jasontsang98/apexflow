@@ -31,6 +31,56 @@ def _style(figure: go.Figure, height: int = 430) -> go.Figure:
     figure.update_yaxes(gridcolor=GRID_COLOUR, zerolinecolor=GRID_COLOUR)
     return figure
 
+def season_races_chart(races: pd.DataFrame) -> go.Figure:
+    data = races.sort_values("session_start")
+    data = data.assign(
+        conditions=data["was_wet"].map({True: "Wet", False: "Dry"}).fillna("Unknown")
+    )
+    figure = px.bar(
+        data,
+        x="meeting_name",
+        y="fastest_lap",
+        color="conditions",
+        color_discrete_map={"Dry": "#ff3154", "Wet": "#3d8bff", "Unknown": "#9399aa"},
+        custom_data=["circuit_short_name", "fastest_driver", "lap_count", "driver_count"],
+        title="Fastest lap at each analysed race",
+    )
+    figure.update_traces(
+        hovertemplate=(
+            "<b>%{x}</b><br>%{customdata[0]}<br>"
+            "Fastest %{y:.3f}s · %{customdata[1]}<br>"
+            "%{customdata[2]} laps · %{customdata[3]} drivers<extra></extra>"
+        )
+    )
+    figure.update_xaxes(title=None, tickangle=-20)
+    figure.update_yaxes(title="Fastest lap (seconds)")
+    return _style(figure, 470)
+
+
+def season_driver_chart(drivers: pd.DataFrame) -> go.Figure:
+    data = drivers.sort_values("average_delta_to_best", ascending=False)
+    figure = px.bar(
+        data,
+        x="average_delta_to_best",
+        y="name_acronym",
+        orientation="h",
+        color="team_colour_hex",
+        color_discrete_map="identity",
+        custom_data=["full_name", "team_name", "races", "laps", "top_speed"],
+        title="Season pace consistency",
+    )
+    figure.update_traces(
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>%{customdata[1]}<br>"
+            "Average delta %{x:.3f}s<br>%{customdata[2]} races · %{customdata[3]} laps · "
+            "%{customdata[4]} km/h top speed<extra></extra>"
+        )
+    )
+    figure.update_layout(showlegend=False)
+    figure.update_xaxes(title="Average delta to personal best (s)")
+    figure.update_yaxes(title=None)
+    return _style(figure, max(430, len(data) * 26))
+
 
 def fastest_lap_chart(laps: pd.DataFrame) -> go.Figure:
     data = fastest_laps(laps).sort_values("lap_duration", ascending=False)

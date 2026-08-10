@@ -40,6 +40,23 @@ class DashboardRepositoryTests(unittest.TestCase):
         sql = self.client.query.call_args.args[0]
         self.assertIn("apexflow_gold.dim_sessions", sql)
 
+    def test_season_races_uses_year_parameter(self):
+        self.repository.season_races(2025)
+
+        sql = self.client.query.call_args.args[0]
+        config = self.client.query.call_args.kwargs["job_config"]
+        self.assertIn("fct_dashboard_laps", sql)
+        self.assertIn("dim_sessions", sql)
+        self.assertEqual(config.query_parameters[0].value, 2025)
+
+    def test_season_drivers_uses_year_parameter(self):
+        self.repository.season_drivers(2025)
+
+        sql = self.client.query.call_args.args[0]
+        config = self.client.query.call_args.kwargs["job_config"]
+        self.assertIn("average_delta_to_best", sql)
+        self.assertEqual(config.query_parameters[0].value, 2025)
+
     def test_drivers_uses_session_parameter(self):
         self.repository.drivers(9693)
 

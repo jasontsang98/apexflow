@@ -37,6 +37,25 @@ def overview_metrics(laps: pd.DataFrame) -> dict[str, str]:
         "lap_count": f"{len(laps):,}",
     }
 
+def season_metrics(races: pd.DataFrame, drivers: pd.DataFrame) -> dict[str, str]:
+    if races.empty:
+        return {
+            "race_count": "0",
+            "driver_count": "0",
+            "lap_count": "0",
+            "fastest_lap": "—",
+            "fastest_driver": "—",
+        }
+
+    fastest = races.loc[races["fastest_lap"].idxmin()]
+    return {
+        "race_count": f"{len(races):,}",
+        "driver_count": f"{len(drivers):,}",
+        "lap_count": f"{int(races['lap_count'].sum()):,}",
+        "fastest_lap": format_lap_time(fastest["fastest_lap"]),
+        "fastest_driver": str(fastest["fastest_driver"]),
+    }
+
 
 def add_elapsed_time(telemetry: pd.DataFrame) -> pd.DataFrame:
     result = telemetry.copy()
