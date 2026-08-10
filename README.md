@@ -22,6 +22,46 @@ Run the ingestion from the repository root:
 uv run python -m ingestors.main
 ```
 
+## Airflow: ingest one or more seasons
+
+The `apexflow_season_ingestion` DAG accepts a validated list of years when it
+is triggered, discovers the official race sessions from OpenF1, and maps one
+observable task per race. Race tasks run serially to respect the shared OpenF1
+rate limit. Writes use deterministic GCS paths, so failed tasks can be retried
+without creating duplicate objects. After every race succeeds, Airflow runs
+`dbt build` to refresh and test the BigQuery Silver and Gold models.
+
+The local stack follows the Airflow 3.1 Docker layout and requires Docker
+Compose plus Google Application Default Credentials:
+
+```bash
+gcloud auth application-default login
+mkdir -p airflow/logs
+echo "AIRFLOW_UID=$(id -u)" > .env
+docker compose -f docker-compose.airflow.yml build
+docker compose -f docker-compose.airflow.yml up airflow-init
+docker compose -f docker-compose.airflow.yml up -d
+```
+
+Open `http://localhost:8080`, sign in as `airflow`, unpause
+`apexflow_season_ingestion`, and trigger it. The form defaults to `[2025]`;
+enter another year or multiple years as needed. The DAG is manual because
+these runs are historical backfills, not a recurring feed.
+
+If ADC is stored elsewhere, add its absolute path to `.env`:
+
+```bash
+GOOGLE_APPLICATION_CREDENTIALS_HOST_PATH=/absolute/path/application_default_credentials.json
+```
+
+Useful commands:
+
+```bash
+docker compose -f docker-compose.airflow.yml ps
+docker compose -f docker-compose.airflow.yml logs -f airflow-scheduler
+docker compose -f docker-compose.airflow.yml down
+```
+
 ## Validation
 
 Run the unit tests:

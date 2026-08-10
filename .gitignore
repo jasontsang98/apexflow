@@ -47,3 +47,5 @@ logs/
 standalone_admin_password.txt
 airflow.db
 airflow.cfg
+airflow/logs/
+airflow/.env

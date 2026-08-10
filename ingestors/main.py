@@ -9,9 +9,11 @@ from .schemas import (
     LapData,
     LocationData,
     PitData,
+    RaceControlData,
     SessionResultData,
     StintData,
     TelemetryData,
+    WeatherData,
 )
 from .utils import get_logger
 
@@ -19,11 +21,7 @@ logger = get_logger("Main-Ingestor")
 
 
 def upload_to_gcs(bucket_name: str, destination_blob_name: str, data: list) -> str:
-    """Upload records as NDJSON and return the resulting GCS URI.
-
-    Exceptions deliberately propagate so callers and orchestrators cannot report
-    a successful ingestion after a failed write.
-    """
+    """Upload records as NDJSON and return the resulting GCS URI."""
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
@@ -64,92 +62,102 @@ def _ingest_driver_data(
     upload_to_gcs(bucket_name, path, validated_data)
     return True
 
-def ingest_session_results(client, bucket_name: str, session_key: int) -> bool:
-    raw_data = client.get_session_results(session_key)
+
+def _ingest_session_data(fetch, schema, filename, bucket_name, session_key) -> bool:
+    raw_data = fetch(session_key)
     if not raw_data:
         return False
 
-    validated_data = [SessionResultData(**record) for record in raw_data]
-    path = f"bronze/telemetry/session_key={session_key}/session_result.json"
+    validated_data = [schema(**record) for record in raw_data]
+    path = f"bronze/telemetry/session_key={session_key}/{filename}"
     upload_to_gcs(bucket_name, path, validated_data)
     return True
 
 
-def ingest_driver_telemetry(client, bucket_name, session_key, driver_number):
-    return _ingest_driver_data(
-        client.get_car_data,
-        TelemetryData,
-        "car_data.json",
+def ingest_session_results(client, bucket_name: str, session_key: int) -> bool:
+    return _ingest_session_data(
+        client.get_session_results,
+        SessionResultData,
+        "session_result.json",
         bucket_name,
         session_key,
-        driver_number,
+    )
+
+
+def ingest_driver_telemetry(client, bucket_name, session_key, driver_number):
+    return _ingest_driver_data(
+        client.get_car_data, TelemetryData, "car_data.json",
+        bucket_name, session_key, driver_number,
     )
 
 
 def ingest_driver_laps(client, bucket_name, session_key, driver_number):
     return _ingest_driver_data(
-        client.get_car_laps,
-        LapData,
-        "laps.json",
-        bucket_name,
-        session_key,
-        driver_number,
+        client.get_car_laps, LapData, "laps.json",
+        bucket_name, session_key, driver_number,
     )
 
 
 def ingest_driver_stints(client, bucket_name, session_key, driver_number):
     return _ingest_driver_data(
-        client.get_stints,
-        StintData,
-        "stints.json",
-        bucket_name,
-        session_key,
-        driver_number,
+        client.get_stints, StintData, "stints.json",
+        bucket_name, session_key, driver_number,
     )
 
 
 def ingest_driver_pit_stops(client, bucket_name, session_key, driver_number):
     return _ingest_driver_data(
-        client.get_pit_stops,
-        PitData,
-        "pits.json",
-        bucket_name,
-        session_key,
-        driver_number,
+        client.get_pit_stops, PitData, "pits.json",
+        bucket_name, session_key, driver_number,
     )
 
 
 def ingest_driver_locations(client, bucket_name, session_key, driver_number):
     return _ingest_driver_data(
-        client.get_locations,
-        LocationData,
-        "locations.json",
-        bucket_name,
-        session_key,
-        driver_number,
+        client.get_locations, LocationData, "locations.json",
+        bucket_name, session_key, driver_number,
     )
 
 
-def run_ingestion():
-    request_delay = float(os.getenv("OPENF1_REQUEST_DELAY", "2.1"))
-    request_timeout = float(os.getenv("OPENF1_REQUEST_TIMEOUT", "30"))
-    max_retries = int(os.getenv("OPENF1_MAX_RETRIES", "3"))
-    bucket_name = os.getenv("APEXFLOW_BUCKET", "apexflow-raw-data")
-    session_id = int(os.getenv("APEXFLOW_SESSION_KEY", "9693"))
-
-    client = OpenF1Client(
-        sustained_delay=request_delay,
-        timeout=request_timeout,
-        max_retries=max_retries,
+def create_client_from_env() -> OpenF1Client:
+    return OpenF1Client(
+        sustained_delay=float(os.getenv("OPENF1_REQUEST_DELAY", "2.1")),
+        timeout=float(os.getenv("OPENF1_REQUEST_TIMEOUT", "30")),
+        max_retries=int(os.getenv("OPENF1_MAX_RETRIES", "3")),
     )
-    logger.info("Starting full-grid ingestion for session %d", session_id)
 
-    raw_drivers = client.get_drivers(session_id)
+
+def ingest_race_session(
+    session_key: int,
+    bucket_name: str,
+    client: OpenF1Client | None = None,
+) -> dict[str, int]:
+    """Ingest one complete race. Re-running overwrites the same GCS objects."""
+    client = client or create_client_from_env()
+    logger.info("Starting full-grid ingestion for session %d", session_key)
+
+    raw_drivers = client.get_drivers(session_key)
     drivers = [DriverData(**record) for record in raw_drivers]
     if not drivers:
-        raise RuntimeError(f"No drivers returned for session {session_id}")
+        raise RuntimeError(f"No drivers returned for session {session_key}")
 
-    ingest_session_results(client, bucket_name, session_id)
+    upload_to_gcs(
+        bucket_name,
+        f"bronze/telemetry/session_key={session_key}/drivers.json",
+        drivers,
+    )
+    _ingest_session_data(
+        client.get_weather, WeatherData, "weather.json", bucket_name, session_key
+    )
+    _ingest_session_data(
+        client.get_race_control,
+        RaceControlData,
+        "race_control.json",
+        bucket_name,
+        session_key,
+    )
+    ingest_session_results(client, bucket_name, session_key)
+
     tasks = (
         ingest_driver_telemetry,
         ingest_driver_laps,
@@ -160,9 +168,16 @@ def run_ingestion():
     for driver in drivers:
         logger.info("Processing driver %d (%s)", driver.driver_number, driver.name_acronym)
         for task in tasks:
-            task(client, bucket_name, session_id, driver.driver_number)
+            task(client, bucket_name, session_key, driver.driver_number)
 
-    logger.info("Full-grid ingestion complete")
+    logger.info("Full-grid ingestion complete for session %d", session_key)
+    return {"session_key": session_key, "drivers": len(drivers)}
+
+
+def run_ingestion():
+    bucket_name = os.getenv("APEXFLOW_BUCKET", "apexflow-raw-data")
+    session_key = int(os.getenv("APEXFLOW_SESSION_KEY", "9693"))
+    return ingest_race_session(session_key, bucket_name)
 
 
 if __name__ == "__main__":

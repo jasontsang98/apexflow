@@ -1,0 +1,13 @@
+apexflow_dbt:
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: apexflow-f1
+      dataset: apexflow_silver
+      location: australia-southeast1
+      threads: 4
+      job_execution_timeout_seconds: 300
+      job_retries: 1
+      priority: interactive
+  target: dev
